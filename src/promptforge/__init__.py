@@ -1,7 +1,13 @@
 """PromptForge — prompt quality scoring and optimization."""
 
-from promptforge.scorer import PromptQualityScorer
+from promptforge.optimizer import PromptOptimizer
 from promptforge.pipeline import PromptForge
+from promptforge.scorer import PromptQualityScorer
 
-__version__ = "0.1.0"
-__all__ = ["PromptForge", "PromptQualityScorer", "__version__"]
+__version__ = "0.2.0"
+__all__ = [
+    "PromptForge",
+    "PromptOptimizer",
+    "PromptQualityScorer",
+    "__version__",
+]

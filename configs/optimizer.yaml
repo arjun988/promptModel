@@ -1,0 +1,50 @@
+# PromptForge-Optimizer (Phase 2) — LoRA SFT defaults
+# GPU-first. Tuned for Colab T4 / local CUDA.
+
+base_model_name: Qwen/Qwen2.5-0.5B-Instruct
+max_seq_length: 1024
+max_new_tokens: 512
+
+# Data
+num_examples: 10000
+seed: 42
+train_ratio: 0.90
+val_ratio: 0.05
+test_ratio: 0.05
+task_type: general  # general | coding | writing | research | data | creative
+
+# LoRA / PEFT
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+
+# Training
+num_train_epochs: 2
+per_device_train_batch_size: 2
+per_device_eval_batch_size: 2
+gradient_accumulation_steps: 8
+learning_rate: 2.0e-4
+weight_decay: 0.01
+warmup_ratio: 0.03
+logging_steps: 50
+eval_steps: 200
+save_steps: 200
+save_total_limit: 2
+early_stopping_patience: 3
+
+prefer_gpu: true
+use_fp16: true
+use_bf16: false
+load_in_4bit: false  # set true on tight VRAM
+
+output_dir: outputs/promptforge-optimizer
+dataset_path: data/promptforge_optimizer_dataset.csv
+final_model_dir: outputs/promptforge-optimizer-model

@@ -4,6 +4,18 @@ Open-source prompt **quality scoring** (Phase 1) and **optimization** (Phase 2) 
 
 > Quantitatively evaluate prompt quality and improve prompts — with measurable downstream gains.
 
+## Phase 2 — Prompt Optimizer (LoRA)
+
+```bash
+pip install -e .
+python scripts/train_optimizer.py --require-gpu --regenerate
+promptforge optimize "Build me a website" --model outputs/promptforge-optimizer-model
+```
+
+Colab (self-contained, Phase-1 style): open `PromptModelphase2.ipynb` with a **GPU** runtime.
+
+Package-driven Colab: `notebooks/PromptForge_Phase2_Optimizer.ipynb`
+
 ## Phase 1 status
 
 **PromptForge-Quality** — ModernBERT encoder + dual regression heads.
