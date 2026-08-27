@@ -16,14 +16,23 @@ tags:
 
 # PromptForge Space
 
-Combined pipeline:
+Phase 3 demo — combined pipeline:
 
-1. **PromptForge-Quality** — multi-dimension prompt scoring
-2. **PromptForge-Optimizer** — LoRA prompt rewriting
+1. **PromptForge-Quality** — multi-dimension prompt scoring  
+2. **PromptForge-Optimizer** — LoRA prompt rewriting  
 
-Set Space secrets / variables:
+## Local
 
-- `PROMPTFORGE_QUALITY_MODEL` — HF repo or local path for the scorer
-- `PROMPTFORGE_OPTIMIZER_MODEL` — HF repo or local path for the optimizer
+```bash
+pip install -e ".[demo]"
+python demo/app.py
+# or
+promptforge space
+```
 
-Or edit defaults in `app.py`.
+## Space secrets / variables
+
+- `PROMPTFORGE_QUALITY_MODEL` — HF repo or path for the scorer  
+- `PROMPTFORGE_OPTIMIZER_MODEL` — HF repo or path for the optimizer  
+
+See the main [README](../README.md) and [docs/PRD.md](../docs/PRD.md).

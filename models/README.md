@@ -1,10 +1,17 @@
-# PromptForge local models
-#
-# Default download location used by:
-#   promptforge download
-#
-# Layout after download:
-#   ~/.promptforge/models/PromptForge-Quality/
-#   ~/.promptforge/models/PromptForge-Optimizer/
-#
-# Or place trained Colab exports here / set paths in ~/.promptforge/config.yaml
+# PromptForge models directory
+
+Downloaded / exported weights live under the user home by default:
+
+```text
+~/.promptforge/models/PromptForge-Quality/
+~/.promptforge/models/PromptForge-Optimizer/
+```
+
+Created by:
+
+```bash
+promptforge init
+promptforge download
+```
+
+You can also keep Colab exports in repo `outputs/` during development (gitignored).

@@ -15,9 +15,11 @@ build/
 venv/
 env/
 
-# Data & training artifacts
-data/
-outputs/
+# Data & training artifacts (keep folder placeholders)
+data/*
+!data/.gitkeep
+outputs/*
+!outputs/.gitkeep
 wandb/
 runs/
 *.bin
@@ -37,6 +39,7 @@ Thumbs.db
 *.pem
 hf_token.txt
 
-# Temp extract helpers
+# Temp helpers
 _nb_extract/
 _extract_nb.py
+_make_*.py
