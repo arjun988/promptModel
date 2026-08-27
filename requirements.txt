@@ -1,0 +1,12 @@
+torch>=2.1.0
+transformers>=4.48.0
+datasets>=2.19.0
+accelerate>=0.30.0
+scikit-learn>=1.4.0
+pandas>=2.1.0
+numpy>=1.26.0
+scipy>=1.11.0
+evaluate>=0.4.0
+huggingface_hub>=0.23.0
+pyyaml>=6.0
+tqdm>=4.66.0

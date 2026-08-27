@@ -1,0 +1,47 @@
+# Quality Scorer defaults (Phase 1)
+# Override via CLI flags or environment variables.
+
+model_name: answerdotai/ModernBERT-base
+max_length: 512
+num_labels: 7
+label_names:
+  - clarity
+  - specificity
+  - context
+  - goal_definition
+  - constraints
+  - completeness
+  - actionability
+
+# Data
+num_examples: 25000
+seed: 42
+train_ratio: 0.80
+val_ratio: 0.10
+test_ratio: 0.10
+
+# Training (GPU-first)
+num_train_epochs: 3
+per_device_train_batch_size: 8
+per_device_eval_batch_size: 16
+gradient_accumulation_steps: 2
+learning_rate: 2.0e-5
+weight_decay: 0.01
+warmup_steps: 500
+logging_steps: 100
+eval_steps: 500
+save_steps: 500
+save_total_limit: 2
+early_stopping_patience: 2
+dropout: 0.1
+dimension_loss_weight: 0.8
+quality_loss_weight: 0.2
+
+# Prefer CUDA whenever available
+prefer_gpu: true
+use_fp16: true
+use_bf16: false
+
+output_dir: outputs/promptforge-quality
+dataset_path: data/promptforge_dataset.csv
+final_model_dir: outputs/promptforge-quality-model

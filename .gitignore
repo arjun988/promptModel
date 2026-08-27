@@ -1,0 +1,42 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Data & training artifacts
+data/
+outputs/
+wandb/
+runs/
+*.bin
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+
+# Notebooks / OS
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.*
+*.pem
+hf_token.txt
+
+# Temp extract helpers
+_nb_extract/
+_extract_nb.py
