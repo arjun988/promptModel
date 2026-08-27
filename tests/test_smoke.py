@@ -1,3 +1,8 @@
+from promptforge.comparison import infer_changes
+from promptforge.evaluation import (
+    information_preservation,
+    instruction_preservation,
+)
 from promptforge.scorer import PromptQualityScorer
 
 
@@ -23,3 +28,18 @@ def test_generate_example_schema():
     assert "prompt" in ex
     assert 0 <= ex["quality_score"] <= 100
     assert ex["task_type"] in {"coding", "writing", "research", "data", "creative"}
+
+
+def test_infer_changes():
+    changes = infer_changes(
+        "Make an app.",
+        "Build a production-ready REST API for developers.\nRequirements:\n- Use Python\nReturn JSON.",
+    )
+    assert any("Added" in c or "Expanded" in c for c in changes)
+
+
+def test_preservation_metrics():
+    original = "Build a Python API"
+    optimized = "Build a production-ready Python API with FastAPI"
+    assert instruction_preservation(original, optimized) > 0
+    assert information_preservation(original, optimized) > 0.3

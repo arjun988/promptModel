@@ -1,8 +1,29 @@
 # PromptForge
 
-Open-source prompt **quality scoring** (Phase 1) and **optimization** (Phase 2) for LLMs.
+Open-source prompt **quality scoring**, **optimization**, and **combined pipeline** (Phases 1–3) for LLMs.
 
 > Quantitatively evaluate prompt quality and improve prompts — with measurable downstream gains.
+
+## Phase 3 — Combined pipeline + eval + Space
+
+```bash
+pip install -e ".[demo]"
+
+# End-to-end
+promptforge run "Build me a website" \
+  --quality-model outputs/promptforge-quality-model \
+  --optimizer-model outputs/promptforge-optimizer-model --json
+
+# Evaluation report
+python scripts/evaluate_pipeline.py
+
+# Gradio demo
+python demo/app.py
+# or
+promptforge space --share
+```
+
+Colab: open `PromptModelphase3.ipynb` (GPU). Requires Phase 1 + Phase 2 model folders.
 
 ## Phase 2 — Prompt Optimizer (LoRA)
 

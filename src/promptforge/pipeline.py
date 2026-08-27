@@ -1,18 +1,20 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
+from promptforge.analyzer import PromptAnalyzer
+from promptforge.comparison import build_comparison_payload
 from promptforge.optimizer import PromptOptimizer
 from promptforge.scorer import PromptQualityScorer
 
 
 class PromptForge:
     """
-    Public facade.
+    Combined PromptForge pipeline (Phase 3).
 
-    Phase 1: analyze / score via PromptForge-Quality.
-    Phase 2: optimize via PromptForge-Optimizer (LoRA).
+    Prompt → Quality Scorer → Optimizer → (optional) re-score → comparison
     """
 
     def __init__(
@@ -26,6 +28,7 @@ class PromptForge:
         self.prefer_gpu = prefer_gpu
         self.scorer: PromptQualityScorer | None = None
         self.optimizer: PromptOptimizer | None = None
+        self.analyzer: PromptAnalyzer | None = None
 
         if quality_model_path is not None:
             self.scorer = PromptQualityScorer(
@@ -33,6 +36,7 @@ class PromptForge:
                 prefer_gpu=prefer_gpu,
                 max_length=max_length,
             )
+            self.analyzer = PromptAnalyzer(self.scorer)
 
         if optimizer_model_path is not None:
             self.optimizer = PromptOptimizer(
@@ -47,9 +51,9 @@ class PromptForge:
             )
 
     def analyze(self, prompt: str) -> dict[str, Any]:
-        if self.scorer is None:
+        if self.analyzer is None:
             raise RuntimeError("quality_model_path was not provided.")
-        return self.scorer.analyze(prompt)
+        return self.analyzer.analyze(prompt)
 
     def score(self, prompt: str) -> dict[str, Any]:
         if self.scorer is None:
@@ -70,7 +74,7 @@ class PromptForge:
             )
 
         if analysis is None and use_scorer_analysis and self.scorer is not None:
-            analysis = self.scorer.analyze(prompt)
+            analysis = self.analyze(prompt)
 
         result = self.optimizer.optimize(
             prompt,
@@ -85,17 +89,53 @@ class PromptForge:
         self,
         prompt: str,
         task_type: str = "general",
+        rescore_optimized: bool = True,
     ) -> dict[str, Any]:
-        analysis = self.analyze(prompt) if self.scorer is not None else None
+        return self.run(
+            prompt,
+            task_type=task_type,
+            rescore_optimized=rescore_optimized,
+        )
+
+    def run(
+        self,
+        prompt: str,
+        task_type: str = "general",
+        rescore_optimized: bool = True,
+    ) -> dict[str, Any]:
+        """
+        Full Phase-3 pipeline with before/after comparison.
+
+        Returns structured JSON suitable for API / Space / CLI.
+        """
+        if self.scorer is None or self.optimizer is None:
+            raise RuntimeError(
+                "Combined pipeline requires both quality_model_path and optimizer_model_path."
+            )
+
+        before = self.analyze(prompt)
         optimized = self.optimize(
             prompt,
-            analysis=analysis,
+            analysis=before,
             task_type=task_type,
             use_scorer_analysis=False,
         )
-        return {
-            "original_prompt": prompt,
-            "analysis": analysis,
-            "optimized_prompt": optimized["optimized_prompt"],
-            "task_type": task_type,
-        }
+        optimized_prompt = optimized["optimized_prompt"]
+
+        after: dict[str, Any] | None = None
+        if rescore_optimized:
+            after = self.analyze(optimized_prompt)
+
+        return build_comparison_payload(
+            original_prompt=prompt,
+            optimized_prompt=optimized_prompt,
+            before_analysis=before,
+            after_analysis=after,
+            task_type=task_type,
+        )
+
+    def export_result(self, result: dict[str, Any], path: str | Path) -> Path:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+        return path

@@ -1,0 +1,20 @@
+# Phase 3 — combined pipeline / evaluation / Space defaults
+
+quality_model_path: outputs/promptforge-quality-model
+optimizer_model_path: outputs/promptforge-optimizer-model
+
+prefer_gpu: true
+max_length: 512
+max_new_tokens: 512
+default_task_type: general
+rescore_optimized: true
+
+# Evaluation
+eval_output_dir: outputs/phase3_eval
+eval_report_path: outputs/phase3_eval/pipeline_report.json
+downstream_report_path: outputs/phase3_eval/downstream_proxy_report.json
+
+# Gradio / HF Space
+space_title: PromptForge
+space_port: 7860
+share: false
