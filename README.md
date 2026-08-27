@@ -1,8 +1,35 @@
 # PromptForge
 
-Open-source prompt **quality scoring**, **optimization**, and **combined pipeline** (Phases 1–3) for LLMs.
+Open-source prompt quality scoring, optimization, and local developer tooling (Phases 1–4).
 
 > Quantitatively evaluate prompt quality and improve prompts — with measurable downstream gains.
+
+## Phase 4 — Local package + CLI
+
+```bash
+pip install -e ".[demo,dev]"
+promptforge init
+promptforge doctor
+
+# After models are trained / published:
+promptforge download --quality-repo YOUR_USER/PromptForge-Quality \
+  --optimizer-repo YOUR_USER/PromptForge-Optimizer
+
+promptforge analyze "Build me a website"
+promptforge optimize "Build me a website"
+promptforge run "Build me a website"
+```
+
+Python:
+
+```python
+from promptforge import PromptForge
+
+pf = PromptForge.from_config()  # uses ~/.promptforge or env
+print(pf.analyze("Build me a website"))
+```
+
+Details: [docs/LOCAL.md](docs/LOCAL.md) · Colab/local check: `PromptModelphase4.ipynb`
 
 ## Phase 3 — Combined pipeline + eval + Space
 

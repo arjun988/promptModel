@@ -1,0 +1,11 @@
+# Example user config — copy to ~/.promptforge/config.yaml
+#
+# Create with:
+#   promptforge init
+#   promptforge download
+
+prefer_gpu: true
+
+# Local folders OR Hugging Face repo ids
+quality_model_path: ~/.promptforge/models/PromptForge-Quality
+optimizer_model_path: ~/.promptforge/models/PromptForge-Optimizer
