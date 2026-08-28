@@ -35,13 +35,24 @@ Full product plan: [docs/PRD.md](docs/PRD.md)
 
 ---
 
+## Models
+
+| Component | Base model | Parameters | What you train |
+|-----------|------------|------------|----------------|
+| **Quality scorer** | [`answerdotai/ModernBERT-base`](https://huggingface.co/answerdotai/ModernBERT-base) | **~150M** | Full fine-tune (encoder + regression heads) |
+| **Prompt optimizer** | [`Qwen/Qwen2.5-0.5B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct) | **0.5B** (~494M) | LoRA adapter only (~8M trainable; base frozen) |
+
+**Total footprint at inference:** ~150M (scorer) + ~500M (optimizer base + small LoRA) ≈ **~650M parameters** — small enough to run locally on an 8 GB GPU.
+
+---
+
 ## Results (local — RTX 5060 Laptop, 8 GB)
 
 Trained on **Windows + CUDA** (`torch+cu128`). Metrics from `outputs/*/metrics.json`.
 
 ### Phase 1 — PromptForge-Quality
 
-**Model:** `answerdotai/ModernBERT-base` · **Data:** 25k synthetic · **Epochs:** 3
+**Model:** `answerdotai/ModernBERT-base` (**~150M**) · **Data:** 25k synthetic · **Epochs:** 3
 
 | Split | Metric | Value |
 |-------|--------|------:|
@@ -56,7 +67,7 @@ Training: ~**33 min** (`train_loss` 55.07) · Device: RTX 5060 Laptop GPU
 
 ### Phase 2 — PromptForge-Optimizer
 
-**Model:** `Qwen/Qwen2.5-0.5B-Instruct` + LoRA · **Data:** 10k · **Epochs:** 2 · **Seq len:** 512
+**Model:** `Qwen/Qwen2.5-0.5B-Instruct` (**0.5B**) + LoRA · **Data:** 10k · **Epochs:** 2 · **Seq len:** 512
 
 | Split | Metric | Value |
 |-------|--------|------:|
@@ -122,7 +133,7 @@ Local setup guide: [docs/LOCAL.md](docs/LOCAL.md)
 
 ### Phase 1 — Quality Scorer
 
-ModernBERT encoder with multi-dimension regression heads.
+ModernBERT encoder (**~150M**) with multi-dimension regression heads.
 
 Scores: `clarity`, `specificity`, `context`, `goal_definition`, `constraints`, `completeness`, `actionability`.
 
@@ -138,7 +149,7 @@ python scripts/train_quality.py --require-gpu --regenerate
 
 ### Phase 2 — Prompt Optimizer
 
-LoRA fine-tune on `Qwen/Qwen2.5-0.5B-Instruct` (default).
+LoRA fine-tune on `Qwen/Qwen2.5-0.5B-Instruct` (**0.5B** base, ~8M trainable LoRA weights).
 
 | Colab (self-contained) | Package-driven |
 |------------------------|----------------|
