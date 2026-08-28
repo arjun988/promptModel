@@ -1,7 +1,7 @@
 from promptforge.data.generate import generate_dataset, generate_example, summarize_dataset
 from promptforge.data.optimizer_generate import (
     SYSTEM_PROMPT,
-    build_training_text,
+    build_optimizer_messages,
     format_optimizer_input,
     generate_optimizer_dataset,
     generate_optimizer_example,
@@ -18,7 +18,7 @@ from promptforge.data.prepare import (
 __all__ = [
     "LABEL_COLUMNS",
     "SYSTEM_PROMPT",
-    "build_training_text",
+    "build_optimizer_messages",
     "dataframe_to_dataset_dict",
     "format_optimizer_input",
     "generate_dataset",

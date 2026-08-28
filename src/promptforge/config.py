@@ -95,9 +95,9 @@ class OptimizerConfig:
 
     base_model_name: str = "Qwen/Qwen2.5-0.5B-Instruct"
     max_seq_length: int = 1024
-    max_new_tokens: int = 512
+    max_new_tokens: int = 256
 
-    num_examples: int = 10_000
+    num_examples: int = 5_000
     seed: int = 42
     train_ratio: float = 0.90
     val_ratio: float = 0.05
@@ -119,7 +119,7 @@ class OptimizerConfig:
         ]
     )
 
-    num_train_epochs: int = 2
+    num_train_epochs: int = 3
     per_device_train_batch_size: int = 2
     per_device_eval_batch_size: int = 2
     gradient_accumulation_steps: int = 8

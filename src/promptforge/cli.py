@@ -184,16 +184,43 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
     before = result["before"]["quality_score"]
     after = result["after"].get("quality_score", "n/a")
-    print(f"Prompt Quality: {before} → {after}  (Δ {result['delta'].get('quality_score', 'n/a')})")
+    print(f"Prompt Quality: {before} -> {after}  (delta {result['delta'].get('quality_score', 'n/a')})")
+    if result.get("used_fallback"):
+        model_val = result.get("model_validation") or {}
+        issues = model_val.get("issues") or []
+        print(
+            "\nNote: Model output failed validation; showing intent-preserving fallback."
+        )
+        if issues:
+            print(f"Rejection reasons: {', '.join(issues)}")
+        if model_val.get("instruction_preservation") is not None:
+            print(
+                f"Intent preservation: {model_val['instruction_preservation']:.2%} "
+                f"(min 8%)"
+            )
+        if model_val.get("repetitive"):
+            print("Detected repetitive output.")
+        raw = (result.get("raw_output") or "").strip()
+        if raw:
+            print("\nModel output (rejected):")
+            print("-" * 32)
+            preview = raw if len(raw) <= 600 else raw[:600] + "..."
+            print(preview)
+        print(
+            "\nFor real model rewrites, retrain: "
+            "python scripts/train_optimizer.py --require-gpu --fast --regenerate"
+        )
+    elif not result.get("trustworthy_improvement"):
+        print("\nWarning: Score delta may not reflect a trustworthy improvement.")
     if result["before"].get("issues"):
         print("\nProblems:")
         for issue in result["before"]["issues"]:
-            print(f"  ✗ {issue}")
+            print(f"  - {issue}")
     print("\nChanges:")
     for change in result.get("changes", []):
         print(f"  + {change}")
     print("\nOptimized Prompt")
-    print("─" * 32)
+    print("-" * 32)
     print(result["optimized_prompt"])
     return 0
 

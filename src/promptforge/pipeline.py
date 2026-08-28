@@ -6,9 +6,12 @@ from typing import Any
 
 from promptforge.analyzer import PromptAnalyzer
 from promptforge.comparison import build_comparison_payload
+from promptforge.evaluation import instruction_preservation
 from promptforge.local_paths import prefer_gpu_from_env, resolve_model_path
 from promptforge.optimizer import PromptOptimizer
 from promptforge.scorer import PromptQualityScorer
+
+_DEFAULT_MAX_NEW_TOKENS = 256
 
 
 class PromptForge:
@@ -25,7 +28,7 @@ class PromptForge:
         optimizer_model_path: str | Path | None = None,
         prefer_gpu: bool | None = None,
         max_length: int = 512,
-        max_new_tokens: int = 512,
+        max_new_tokens: int = _DEFAULT_MAX_NEW_TOKENS,
         require_quality: bool = False,
         require_optimizer: bool = False,
     ) -> None:
@@ -105,6 +108,8 @@ class PromptForge:
         analysis: dict[str, Any] | None = None,
         task_type: str = "general",
         use_scorer_analysis: bool = True,
+        validate: bool = True,
+        fallback_on_invalid: bool = True,
     ) -> dict[str, Any]:
         if self.optimizer is None:
             raise RuntimeError("optimizer model not loaded.")
@@ -116,6 +121,8 @@ class PromptForge:
             prompt,
             analysis=analysis,
             task_type=task_type,
+            validate=validate,
+            fallback_on_invalid=fallback_on_invalid,
         )
         if analysis is not None:
             result["analysis"] = analysis
@@ -152,18 +159,41 @@ class PromptForge:
             use_scorer_analysis=False,
         )
         optimized_prompt = optimized["optimized_prompt"]
+        validation = optimized.get("validation") or {}
 
         after: dict[str, Any] | None = None
         if rescore_optimized:
             after = self.analyze(optimized_prompt)
 
-        return build_comparison_payload(
+        payload = build_comparison_payload(
             original_prompt=prompt,
             optimized_prompt=optimized_prompt,
             before_analysis=before,
             after_analysis=after,
             task_type=task_type,
         )
+
+        intent = validation.get(
+            "instruction_preservation",
+            instruction_preservation(prompt, optimized_prompt),
+        )
+        used_fallback = optimized.get("used_fallback", False)
+        score_delta = payload["delta"]["quality_score"]
+        trustworthy = bool(
+            not used_fallback
+            and validation.get("valid", True)
+            and intent >= 0.08
+            and not validation.get("repetitive", False)
+            and (score_delta <= 0 or intent >= 0.05)
+        )
+
+        payload["validation"] = validation
+        payload["model_validation"] = optimized.get("model_validation")
+        payload["raw_output"] = optimized.get("raw_output")
+        payload["model_output"] = optimized.get("model_output")
+        payload["used_fallback"] = used_fallback
+        payload["trustworthy_improvement"] = trustworthy
+        return payload
 
     def export_result(self, result: dict[str, Any], path: str | Path) -> Path:
         path = Path(path)

@@ -13,14 +13,16 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
-    DataCollatorForLanguageModeling,
     EarlyStoppingCallback,
     Trainer,
     TrainingArguments,
 )
 
+import json
+
 from promptforge.config import OptimizerConfig
 from promptforge.data.optimizer_generate import generate_optimizer_dataset
+from promptforge.optimizer_chat import tokenize_sft_messages
 from promptforge.utils.device import (
     describe_device,
     get_device,
@@ -104,34 +106,50 @@ def _tokenize_dataset(
     tokenizer,
     max_seq_length: int,
 ) -> DatasetDict:
-    def tokenize(batch: dict) -> dict:
-        return tokenizer(
-            batch["training_text"],
-            truncation=True,
-            max_length=max_seq_length,
-            padding=False,
-        )
+    def tokenize_row(row: dict) -> dict:
+        messages = json.loads(row["messages_json"])
+        return tokenize_sft_messages(tokenizer, messages, max_seq_length)
+
+    def tokenize_batch(batch: dict) -> dict:
+        out: dict[str, list] = {"input_ids": [], "attention_mask": [], "labels": []}
+        n = len(batch["messages_json"])
+        for i in range(n):
+            row = {k: batch[k][i] for k in batch}
+            encoded = tokenize_row(row)
+            out["input_ids"].append(encoded["input_ids"])
+            out["attention_mask"].append(encoded["attention_mask"])
+            out["labels"].append(encoded["labels"])
+        return out
 
     return dataset.map(
-        tokenize,
+        tokenize_batch,
         batched=True,
         remove_columns=dataset["train"].column_names,
     )
 
 
-class _CausalLMCollator(DataCollatorForLanguageModeling):
-    """Pad labels with -100 to match input_ids (transformers 5.x batching)."""
+class _SFTCollator:
+    """Pad SFT batches; keep -100 on prompt tokens and padding."""
 
-    def torch_call(self, examples):
+    def __init__(self, tokenizer) -> None:
+        self.tokenizer = tokenizer
+
+    def __call__(self, examples: list[dict]) -> dict:
         batch = self.tokenizer.pad(
-            examples,
+            {k: [ex[k] for ex in examples] for k in ("input_ids", "attention_mask")},
             padding=True,
             return_tensors="pt",
         )
-        labels = batch["input_ids"].clone()
-        if self.tokenizer.pad_token_id is not None:
-            labels[labels == self.tokenizer.pad_token_id] = -100
-        batch["labels"] = labels
+        max_len = batch["input_ids"].shape[1]
+        labels = []
+        for ex in examples:
+            row_labels = list(ex["labels"])
+            if len(row_labels) < max_len:
+                row_labels.extend([-100] * (max_len - len(row_labels)))
+            else:
+                row_labels = row_labels[:max_len]
+            labels.append(row_labels)
+        batch["labels"] = torch.tensor(labels, dtype=torch.long)
         return batch
 
 
@@ -238,7 +256,7 @@ def train_optimizer(config: OptimizerConfig, regenerate_dataset: bool = False) -
         gradient_checkpointing=config.gradient_checkpointing,
     )
 
-    data_collator = _CausalLMCollator(tokenizer=tokenizer, mlm=False)
+    data_collator = _SFTCollator(tokenizer)
 
     trainer = Trainer(
         model=model,
@@ -315,7 +333,7 @@ def load_optimizer_model(
             raise FileNotFoundError(
                 f"Could not resolve base model from {adapter_dir}"
             )
-        meta = {"base_model_name": base_name, "max_new_tokens": 512}
+        meta = {"base_model_name": base_name, "max_new_tokens": 256}
 
     device = device or get_device(prefer_gpu=prefer_gpu)
     dtype = torch.float16 if device.type == "cuda" else torch.float32

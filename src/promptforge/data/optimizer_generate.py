@@ -11,96 +11,42 @@ from promptforge.data.generate import (
     AUDIENCES,
     CONSTRAINTS,
     CONTEXTS,
-    LEVEL0_PROMPTS,
     OUTPUT_FORMATS,
     TASKS,
     clamp,
 )
-
-
-SYSTEM_PROMPT = (
-    "You are PromptForge Optimizer. Rewrite the user's prompt into a clear, "
-    "specific, complete, and actionable LLM prompt. Preserve the original intent. "
-    "Add missing audience, context, constraints, and output format when needed. "
-    "Return ONLY the optimized prompt text."
+from promptforge.optimizer_chat import (
+    SYSTEM_PROMPT,
+    build_optimizer_messages,
+    format_optimizer_input,
+    tokenize_sft_messages,
 )
 
+# Re-export for backwards compatibility
+__all__ = [
+    "SYSTEM_PROMPT",
+    "build_optimizer_messages",
+    "format_optimizer_input",
+    "generate_optimizer_dataset",
+    "generate_optimizer_example",
+    "row_to_analysis",
+]
 
-OPTIMIZED_TEMPLATES: dict[str, list[str]] = {
-    "coding": [
-        (
-            "Build a production-ready {task_detail} for {audience}.\n"
-            "{context}\n\n"
-            "Requirements:\n"
-            "- {c1}\n"
-            "- {c2}\n"
-            "- Include error handling and basic tests\n"
-            "- Prefer clear project structure\n\n"
-            "Return:\n"
-            "1. Project structure\n"
-            "2. Complete implementation\n"
-            "3. Setup / run instructions\n"
-            "4. Example usage"
-        ),
-        (
-            "Create a well-specified {task_detail} targeting {audience}.\n"
-            "{context}\n\n"
-            "Constraints:\n"
-            "- {c1}\n"
-            "- {c2}\n"
-            "- {output}\n\n"
-            "Explain key design decisions briefly, then provide complete working code."
-        ),
-    ],
-    "writing": [
-        (
-            "Write a high-quality {task_detail} for {audience}.\n"
-            "{context}\n\n"
-            "Requirements:\n"
-            "- Clear structure with headings\n"
-            "- Concrete examples\n"
-            "- Practical takeaways\n"
-            "- {output}\n\n"
-            "Tone: professional, concise, and useful."
-        ),
-    ],
-    "research": [
-        (
-            "Produce a structured research brief: {task_detail}.\n"
-            "Audience: {audience}.\n"
-            "{context}\n\n"
-            "Cover:\n"
-            "- Problem / question\n"
-            "- Key concepts\n"
-            "- Comparison criteria\n"
-            "- Trade-offs\n"
-            "- Recommendation\n\n"
-            "{output}"
-        ),
-    ],
-    "data": [
-        (
-            "Perform a practical data task: {task_detail} for {audience}.\n"
-            "{context}\n\n"
-            "Requirements:\n"
-            "- State assumptions\n"
-            "- Show steps clearly\n"
-            "- {c1}\n"
-            "- {output}\n\n"
-            "Include interpretation of results, not only code."
-        ),
-    ],
-    "creative": [
-        (
-            "Create {task_detail} for {audience}.\n"
-            "{context}\n\n"
-            "Creative constraints:\n"
-            "- Original and specific\n"
-            "- {c1}\n"
-            "- {output}\n\n"
-            "Deliver a polished draft ready for iteration."
-        ),
-    ],
+# Weak prompt → (domain, canonical task) for intent preservation
+CANONICAL_WEAK: dict[str, tuple[str, str]] = {
+    "Make an app.": ("coding", "Build a mobile application"),
+    "Build something.": ("coding", "Build a software project"),
+    "Create a website.": ("coding", "Build a responsive website"),
+    "Build me a website.": ("coding", "Build a responsive website"),
+    "Build me a project.": ("coding", "Build a software project"),
+    "Make a Python API.": ("coding", "Build a Python REST API"),
+    "Make a Python API for beginners.": ("coding", "Build a Python REST API"),
+    "Write something about AI.": ("writing", "Write an article about AI"),
+    "Write something good.": ("writing", "Write a high-quality article"),
+    "Analyze this.": ("data", "Analyze a dataset"),
+    "Create a workout plan.": ("general", "Create a workout plan"),
+    "Help me with this.": ("general", "Help me solve this problem"),
+    "Make this better.": ("general", "Improve this draft"),
 }
 
 
@@ -123,44 +69,6 @@ def _scores_for_level(level: int, r: random.Random) -> dict[str, int]:
     }
     dims["quality_score"] = clamp(float(np.mean(list(dims.values()))))
     return dims
-
-
-def _weak_prompt(domain: str, task: str, level: int, r: random.Random) -> str:
-    if level <= 0:
-        return r.choice(LEVEL0_PROMPTS)
-    if level == 1:
-        return f"{task}."
-    if level == 2:
-        return f"{task} for {r.choice(AUDIENCES)}."
-    if level == 3:
-        return (
-            f"{task} for {r.choice(AUDIENCES)}. "
-            f"{r.choice(CONTEXTS)} "
-            f"{r.choice(OUTPUT_FORMATS)}"
-        )
-    # level 4 already strong — still produce a slightly weaker variant for rewrite practice
-    return (
-        f"{task} for {r.choice(AUDIENCES)}. "
-        f"{r.choice(CONTEXTS)} "
-        f"Use reasonable defaults."
-    )
-
-
-def _task_detail(task: str) -> str:
-    return task[0].lower() + task[1:] if task else task
-
-
-def _build_optimized(domain: str, task: str, r: random.Random) -> str:
-    templates = OPTIMIZED_TEMPLATES.get(domain, OPTIMIZED_TEMPLATES["coding"])
-    template = r.choice(templates)
-    return template.format(
-        task_detail=_task_detail(task),
-        audience=r.choice(AUDIENCES),
-        context=r.choice(CONTEXTS),
-        c1=r.choice(CONSTRAINTS),
-        c2=r.choice(CONSTRAINTS),
-        output=r.choice(OUTPUT_FORMATS),
-    )
 
 
 def _missing_from_scores(scores: dict[str, int]) -> list[str]:
@@ -195,73 +103,126 @@ def _issues_from_scores(scores: dict[str, int]) -> list[str]:
     return issues
 
 
-def format_optimizer_input(
-    prompt: str,
-    analysis: dict[str, Any],
-    task_type: str = "general",
-) -> str:
-    """User message content fed to the optimizer LM."""
-    dims = analysis.get("dimensions", analysis)
-    lines = [
-        f"Task type: {task_type}",
-        "Original prompt:",
-        prompt.strip(),
-        "",
-        "Quality analysis:",
-        f"- quality_score: {analysis.get('quality_score', dims.get('quality_score', 'n/a'))}",
-    ]
-    for key in (
-        "clarity",
-        "specificity",
-        "context",
-        "goal_definition",
-        "constraints",
-        "completeness",
-        "actionability",
-    ):
-        if key in dims:
-            lines.append(f"- {key}: {dims[key]}")
-
-    missing = analysis.get("missing_information") or analysis.get("missing") or []
-    issues = analysis.get("issues") or []
-    if issues:
-        lines.append(f"- issues: {', '.join(issues)}")
-    if missing:
-        lines.append(f"- missing_information: {', '.join(missing)}")
-
-    lines.extend(
-        [
-            "",
-            "Rewrite this into a high-quality optimized prompt.",
-            "Return only the optimized prompt.",
-        ]
-    )
-    return "\n".join(lines)
-
-
-def build_training_text(
-    prompt: str,
-    analysis: dict[str, Any],
-    optimized_prompt: str,
-    task_type: str = "general",
-) -> str:
-    """Plain-text supervised example (instruction → response)."""
-    user = format_optimizer_input(prompt, analysis, task_type=task_type)
+def _weak_prompt(task: str, level: int, r: random.Random) -> str:
+    if level <= 0:
+        # Try to match a canonical weak prompt for this task
+        for weak, (_, canon) in CANONICAL_WEAK.items():
+            if canon.lower() in task.lower() or task.lower() in canon.lower():
+                return weak
+        return f"{task.split()[0]} something related to {task.lower()}."
+    if level == 1:
+        return f"{task}."
+    if level == 2:
+        return f"{task} for {r.choice(AUDIENCES)}."
+    if level == 3:
+        return (
+            f"{task} for {r.choice(AUDIENCES)}. "
+            f"{r.choice(CONTEXTS)} "
+            f"{r.choice(OUTPUT_FORMATS)}"
+        )
     return (
-        f"<|system|>\n{SYSTEM_PROMPT}\n"
-        f"<|user|>\n{user}\n"
-        f"<|assistant|>\n{optimized_prompt.strip()}"
+        f"{task} for {r.choice(AUDIENCES)}. "
+        f"{r.choice(CONTEXTS)} Use reasonable defaults."
     )
+
+
+def _build_optimized(
+    domain: str,
+    task: str,
+    r: random.Random,
+) -> str:
+    """Intent-preserving optimized prompt — same task/topic, more detail."""
+    audience = r.choice(AUDIENCES)
+    context = r.choice(CONTEXTS)
+    c1 = r.choice(CONSTRAINTS)
+    c2 = r.choice(CONSTRAINTS)
+    output = r.choice(OUTPUT_FORMATS)
+
+    if domain == "coding":
+        return (
+            f"{task} for {audience}.\n"
+            f"{context}\n\n"
+            f"Requirements:\n"
+            f"- {c1}\n"
+            f"- {c2}\n"
+            f"- Include error handling and clear structure\n\n"
+            f"Return:\n"
+            f"1. Project structure\n"
+            f"2. Complete implementation\n"
+            f"3. Setup instructions\n\n"
+            f"{output}"
+        )
+    if domain == "writing":
+        return (
+            f"{task} for {audience}.\n"
+            f"{context}\n\n"
+            f"Requirements:\n"
+            f"- Clear structure with headings\n"
+            f"- Concrete examples\n"
+            f"- {output}\n\n"
+            f"Tone: professional and concise."
+        )
+    if domain == "research":
+        return (
+            f"{task}\n"
+            f"Audience: {audience}.\n"
+            f"{context}\n\n"
+            f"Cover:\n"
+            f"- Problem statement\n"
+            f"- Key concepts\n"
+            f"- Trade-offs and recommendation\n\n"
+            f"{output}"
+        )
+    if domain == "data":
+        return (
+            f"{task} for {audience}.\n"
+            f"{context}\n\n"
+            f"Requirements:\n"
+            f"- State assumptions\n"
+            f"- {c1}\n"
+            f"- {output}\n\n"
+            f"Include interpretation of results."
+        )
+    return (
+        f"{task} for {audience}.\n"
+        f"{context}\n\n"
+        f"Requirements:\n"
+        f"- {c1}\n"
+        f"- {output}\n\n"
+        f"Be specific and actionable."
+    )
+
+
+def build_fallback_prompt(prompt: str, task_type: str = "general") -> str:
+    """Intent-preserving fallback when model output fails validation."""
+    r = random.Random(hash(prompt.strip().lower()) & 0xFFFFFFFF)
+    normalized = prompt.strip()
+
+    for weak, (domain, task) in CANONICAL_WEAK.items():
+        if weak.lower() == normalized.lower():
+            return _build_optimized(domain, task, r)
+
+    if task_type in TASKS:
+        return _build_optimized(task_type, normalized.rstrip("."), r)
+
+    topic = normalized.rstrip(".")
+    return _build_optimized("general", topic, r)
 
 
 def generate_optimizer_example(rng: random.Random | None = None) -> dict[str, Any]:
     r = rng or random
-    domain = r.choice(list(TASKS.keys()))
-    task = r.choice(TASKS[domain])
-    # Bias toward weak/medium prompts that need optimization
-    level = r.choices([0, 1, 2, 3, 4], weights=[0.25, 0.25, 0.25, 0.15, 0.10], k=1)[0]
 
-    weak = _weak_prompt(domain, task, level, r)
+    # 30% canonical real-world weak prompts
+    if r.random() < 0.30 and CANONICAL_WEAK:
+        weak = r.choice(list(CANONICAL_WEAK.keys()))
+        domain, task = CANONICAL_WEAK[weak]
+        level = r.choices([0, 1, 2], weights=[0.5, 0.35, 0.15], k=1)[0]
+    else:
+        domain = r.choice(list(TASKS.keys()))
+        task = r.choice(TASKS[domain])
+        level = r.choices([0, 1, 2, 3], weights=[0.30, 0.30, 0.25, 0.15], k=1)[0]
+        weak = _weak_prompt(task, level, r)
+
     scores = _scores_for_level(level, r)
     missing = _missing_from_scores(scores)
     issues = _issues_from_scores(scores)
@@ -274,9 +235,14 @@ def generate_optimizer_example(rng: random.Random | None = None) -> dict[str, An
         "missing_information": missing,
     }
 
+    messages = build_optimizer_messages(
+        weak, analysis, optimized_prompt=optimized, task_type=domain
+    )
+
     return {
         "prompt": weak,
         "task_type": domain,
+        "canonical_task": task,
         "quality_level": level,
         "quality_score": scores["quality_score"],
         "clarity": scores["clarity"],
@@ -290,14 +256,12 @@ def generate_optimizer_example(rng: random.Random | None = None) -> dict[str, An
         "missing_information": json.dumps(missing),
         "analysis_json": json.dumps(analysis),
         "optimized_prompt": optimized,
-        "training_text": build_training_text(
-            weak, analysis, optimized, task_type=domain
-        ),
+        "messages_json": json.dumps(messages),
     }
 
 
 def generate_optimizer_dataset(
-    num_examples: int = 10_000,
+    num_examples: int = 5_000,
     seed: int = 42,
 ) -> pd.DataFrame:
     rng = random.Random(seed)

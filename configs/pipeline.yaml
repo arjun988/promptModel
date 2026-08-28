@@ -5,7 +5,7 @@ optimizer_model_path: outputs/promptforge-optimizer-model
 
 prefer_gpu: true
 max_length: 512
-max_new_tokens: 512
+max_new_tokens: 256
 default_task_type: general
 rescore_optimized: true
 
