@@ -16,6 +16,24 @@ pip install -U pip
 pip install -e ".[demo,dev]"
 ```
 
+### GPU (required for local training)
+
+`pip install torch` often installs the **CPU** build. On NVIDIA GPUs (including RTX 50-series / Blackwell), install CUDA wheels explicitly:
+
+```bash
+pip uninstall -y torch torchvision torchaudio
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+```
+
+Then verify:
+
+```bash
+python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+promptforge doctor
+```
+
+You want `cuda_available: True` and a CUDA torch build like `2.x.x+cu128` (not `+cpu`).
+
 ## First-time setup
 
 ```bash

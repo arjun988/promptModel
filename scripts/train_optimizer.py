@@ -21,21 +21,36 @@ def main() -> int:
         type=str,
         default=str(ROOT / "configs" / "optimizer.yaml"),
     )
+    parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="Use configs/optimizer_fast_8gb.yaml (RTX 5060 8GB profile)",
+    )
     parser.add_argument("--num-examples", type=int, default=None)
     parser.add_argument("--epochs", type=int, default=None)
     parser.add_argument("--batch-size", type=int, default=None)
+    parser.add_argument("--grad-accum", type=int, default=None)
+    parser.add_argument("--max-seq-length", type=int, default=None)
     parser.add_argument("--base-model", type=str, default=None)
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--final-model-dir", type=str, default=None)
     parser.add_argument("--dataset-path", type=str, default=None)
     parser.add_argument("--regenerate", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
+    parser.add_argument(
+        "--no-gradient-checkpointing",
+        action="store_true",
+        help="Disable gradient checkpointing (faster if VRAM allows)",
+    )
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--require-gpu", action="store_true")
     args = parser.parse_args()
 
     if args.require_gpu:
         os.environ["PROMPTFORGE_REQUIRE_GPU"] = "1"
+
+    if args.fast:
+        args.config = str(ROOT / "configs" / "optimizer_fast_8gb.yaml")
 
     from promptforge.config import OptimizerConfig
     from promptforge.training.train_optimizer import train_optimizer
@@ -47,6 +62,10 @@ def main() -> int:
         config.num_train_epochs = args.epochs
     if args.batch_size is not None:
         config.per_device_train_batch_size = args.batch_size
+    if args.grad_accum is not None:
+        config.gradient_accumulation_steps = args.grad_accum
+    if args.max_seq_length is not None:
+        config.max_seq_length = args.max_seq_length
     if args.base_model:
         config.base_model_name = args.base_model
     if args.output_dir:
@@ -57,6 +76,8 @@ def main() -> int:
         config.dataset_path = args.dataset_path
     if args.load_in_4bit:
         config.load_in_4bit = True
+    if args.no_gradient_checkpointing:
+        config.gradient_checkpointing = False
     if args.cpu:
         config.prefer_gpu = False
         config.use_fp16 = False

@@ -132,6 +132,9 @@ class OptimizerConfig:
     save_total_limit: int = 2
     early_stopping_patience: int = 3
 
+    gradient_checkpointing: bool = True
+    dataloader_num_workers: int = 0
+
     prefer_gpu: bool = True
     use_fp16: bool = True
     use_bf16: bool = False

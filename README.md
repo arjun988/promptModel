@@ -35,6 +35,48 @@ Full product plan: [docs/PRD.md](docs/PRD.md)
 
 ---
 
+## Results (local — RTX 5060 Laptop, 8 GB)
+
+Trained on **Windows + CUDA** (`torch+cu128`). Metrics from `outputs/*/metrics.json`.
+
+### Phase 1 — PromptForge-Quality
+
+**Model:** `answerdotai/ModernBERT-base` · **Data:** 25k synthetic · **Epochs:** 3
+
+| Split | Metric | Value |
+|-------|--------|------:|
+| Validation | MAE | **2.73** |
+| Validation | RMSE | 3.15 |
+| Validation | Pearson | **0.993** |
+| Test (overall) | MAE | **0.96** |
+| Test (overall) | Pearson | **0.999** |
+| Test (overall) | Spearman | 0.959 |
+
+Training: ~**33 min** (`train_loss` 55.07) · Device: RTX 5060 Laptop GPU
+
+### Phase 2 — PromptForge-Optimizer
+
+**Model:** `Qwen/Qwen2.5-0.5B-Instruct` + LoRA · **Data:** 10k · **Epochs:** 2 · **Seq len:** 512
+
+| Split | Metric | Value |
+|-------|--------|------:|
+| Validation | eval_loss | **0.135** |
+| Train | train_loss | 0.191 |
+
+Training: ~**43 min** · Config: `configs/optimizer_fast_8gb.yaml` (`batch=4`, `grad_accum=4`, no gradient checkpointing)
+
+### Phase 3 — Pipeline eval
+
+Run after both models are trained:
+
+```bash
+python scripts/evaluate_pipeline.py
+```
+
+Reports score lift, preservation metrics, and downstream proxy to `outputs/phase3_eval/pipeline_report.json`.
+
+---
+
 ## Quickstart
 
 ```bash
@@ -92,17 +134,25 @@ Scores: `clarity`, `specificity`, `context`, `goal_definition`, `constraints`, `
 python scripts/train_quality.py --require-gpu --regenerate
 ```
 
+**Held-out (local):** val Pearson **0.993**, test overall Pearson **0.999**, test MAE **0.96**.
+
 ### Phase 2 — Prompt Optimizer
 
-LoRA fine-tune on a small instruction model (`Qwen2.5-0.5B-Instruct` by default).
+LoRA fine-tune on `Qwen/Qwen2.5-0.5B-Instruct` (default).
 
 | Colab (self-contained) | Package-driven |
 |------------------------|----------------|
 | [notebooks/colab/02_prompt_optimizer.ipynb](notebooks/colab/02_prompt_optimizer.ipynb) | [notebooks/package/02_prompt_optimizer.ipynb](notebooks/package/02_prompt_optimizer.ipynb) |
 
 ```bash
+# 8GB GPU fast profile (recommended locally)
+python scripts/train_optimizer.py --require-gpu --fast
+
+# Default / Colab-style config
 python scripts/train_optimizer.py --require-gpu --regenerate
 ```
+
+**Held-out (local):** val `eval_loss` **0.135** · ~43 min on RTX 5060 8GB with `--fast`.
 
 ### Phase 3 — Combined Pipeline
 
@@ -188,6 +238,8 @@ Notebook guide: [notebooks/README.md](notebooks/README.md)
 - **Train in Colab (GPU)** — use notebooks under `notebooks/colab/`
 - **Develop the package locally** — `src/promptforge/`, CLI, tests
 - Prefer CUDA + fp16; set `PROMPTFORGE_REQUIRE_GPU=1` to fail without a GPU
+- **8GB GPUs:** use `python scripts/train_optimizer.py --fast` (see `configs/optimizer_fast_8gb.yaml`)
+- **CUDA torch:** install `cu128` wheels — see [docs/LOCAL.md](docs/LOCAL.md)
 
 Hugging Face upload:
 

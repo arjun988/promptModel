@@ -30,6 +30,17 @@ from promptforge.utils.device import (
 )
 
 
+def _enable_gpu_speedups() -> None:
+    """Best-effort CUDA knobs for faster training on consumer GPUs."""
+    if not torch.cuda.is_available():
+        return
+    torch.backends.cudnn.benchmark = True
+    if hasattr(torch.backends.cuda, "matmul"):
+        torch.backends.cuda.matmul.allow_tf32 = True
+    if hasattr(torch.backends, "cudnn"):
+        torch.backends.cudnn.allow_tf32 = True
+
+
 def _split_df(
     df: pd.DataFrame,
     seed: int,
@@ -77,7 +88,7 @@ def _load_base_model_and_tokenizer(config: OptimizerConfig):
         config.base_model_name,
         trust_remote_code=True,
         quantization_config=quant_config,
-        torch_dtype=dtype,
+        dtype=dtype,
         device_map="auto" if torch.cuda.is_available() else None,
     )
 
@@ -94,15 +105,12 @@ def _tokenize_dataset(
     max_seq_length: int,
 ) -> DatasetDict:
     def tokenize(batch: dict) -> dict:
-        texts = batch["training_text"]
-        tokenized = tokenizer(
-            texts,
+        return tokenizer(
+            batch["training_text"],
             truncation=True,
             max_length=max_seq_length,
             padding=False,
         )
-        tokenized["labels"] = [ids[:] for ids in tokenized["input_ids"]]
-        return tokenized
 
     return dataset.map(
         tokenize,
@@ -111,10 +119,27 @@ def _tokenize_dataset(
     )
 
 
+class _CausalLMCollator(DataCollatorForLanguageModeling):
+    """Pad labels with -100 to match input_ids (transformers 5.x batching)."""
+
+    def torch_call(self, examples):
+        batch = self.tokenizer.pad(
+            examples,
+            padding=True,
+            return_tensors="pt",
+        )
+        labels = batch["input_ids"].clone()
+        if self.tokenizer.pad_token_id is not None:
+            labels[labels == self.tokenizer.pad_token_id] = -100
+        batch["labels"] = labels
+        return batch
+
+
 def train_optimizer(config: OptimizerConfig, regenerate_dataset: bool = False) -> dict[str, Any]:
     """Phase-2 LoRA SFT training. GPU-first."""
     require_gpu()
     set_seed(config.seed)
+    _enable_gpu_speedups()
 
     device = get_device(prefer_gpu=config.prefer_gpu)
     print("Device:", describe_device(device))
@@ -162,12 +187,29 @@ def train_optimizer(config: OptimizerConfig, regenerate_dataset: bool = False) -
     model = get_peft_model(model, lora)
     model.print_trainable_parameters()
 
+    if config.gradient_checkpointing:
+        model.gradient_checkpointing_enable()
+        if hasattr(model, "enable_input_require_grads"):
+            model.enable_input_require_grads()
+
     tokenized = _tokenize_dataset(raw, tokenizer, config.max_seq_length)
     precision = training_precision_flags(
         prefer_gpu=config.prefer_gpu,
         use_fp16=config.use_fp16,
         use_bf16=config.use_bf16,
     )
+
+    train_size = len(tokenized["train"])
+    steps_per_epoch = max(
+        1,
+        train_size
+        // (
+            config.per_device_train_batch_size
+            * config.gradient_accumulation_steps
+        ),
+    )
+    total_steps = steps_per_epoch * config.num_train_epochs
+    warmup_steps = max(1, int(total_steps * config.warmup_ratio))
 
     args = TrainingArguments(
         output_dir=config.output_dir,
@@ -177,7 +219,7 @@ def train_optimizer(config: OptimizerConfig, regenerate_dataset: bool = False) -
         gradient_accumulation_steps=config.gradient_accumulation_steps,
         learning_rate=config.learning_rate,
         weight_decay=config.weight_decay,
-        warmup_ratio=config.warmup_ratio,
+        warmup_steps=warmup_steps,
         logging_steps=config.logging_steps,
         eval_strategy="steps",
         eval_steps=config.eval_steps,
@@ -190,12 +232,13 @@ def train_optimizer(config: OptimizerConfig, regenerate_dataset: bool = False) -
         fp16=precision["fp16"],
         bf16=precision["bf16"],
         dataloader_pin_memory=torch.cuda.is_available(),
+        dataloader_num_workers=config.dataloader_num_workers,
         report_to="none",
         remove_unused_columns=False,
-        gradient_checkpointing=True,
+        gradient_checkpointing=config.gradient_checkpointing,
     )
 
-    data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
+    data_collator = _CausalLMCollator(tokenizer=tokenizer, mlm=False)
 
     trainer = Trainer(
         model=model,
@@ -284,7 +327,7 @@ def load_optimizer_model(
     base = AutoModelForCausalLM.from_pretrained(
         base_name,
         trust_remote_code=True,
-        torch_dtype=dtype,
+        dtype=dtype,
         device_map="auto" if device.type == "cuda" else None,
     )
     model = PeftModel.from_pretrained(base, str(adapter_dir))

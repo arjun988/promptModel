@@ -1,3 +1,6 @@
+# Install CUDA torch separately on NVIDIA GPUs (do NOT rely on plain pip torch):
+#   pip uninstall -y torch torchvision torchaudio
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 torch>=2.1.0
 transformers>=4.48.0
 datasets>=2.19.0
