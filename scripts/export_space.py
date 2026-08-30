@@ -18,11 +18,11 @@ from app_impl import build_demo
 demo = build_demo(
     quality_model_path=os.environ.get(
         "PROMPTFORGE_QUALITY_MODEL",
-        "YOUR_USER/PromptForge-Quality",
+        "ArjunShukla/PromptForge-Quality",
     ),
     optimizer_model_path=os.environ.get(
         "PROMPTFORGE_OPTIMIZER_MODEL",
-        "YOUR_USER/PromptForge-Optimizer",
+        "ArjunShukla/PromptForge-Optimizer",
     ),
     prefer_gpu=True,
 )
@@ -58,7 +58,7 @@ def main() -> int:
             "pyyaml",
             "huggingface_hub",
             # Install your published package, or copy src/ into the Space.
-            # "promptforge @ git+https://github.com/YOUR_USER/promptModel.git",
+            # "promptforge @ git+https://github.com/arjun988/promptModel.git",
         ]
     )
     (out / "requirements.txt").write_text(req + "\n", encoding="utf-8")

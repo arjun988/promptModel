@@ -14,8 +14,8 @@ from promptforge.local_paths import (
 )
 
 
-DEFAULT_QUALITY_REPO = "promptforge/PromptForge-Quality"
-DEFAULT_OPTIMIZER_REPO = "promptforge/PromptForge-Optimizer"
+DEFAULT_QUALITY_REPO = "ArjunShukla/PromptForge-Quality"
+DEFAULT_OPTIMIZER_REPO = "ArjunShukla/PromptForge-Optimizer"
 
 
 def download_model(

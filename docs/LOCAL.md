@@ -41,8 +41,8 @@ promptforge init
 promptforge doctor
 
 # After you publish models to the Hub:
-promptforge download --quality-repo YOUR_USER/PromptForge-Quality \
-  --optimizer-repo YOUR_USER/PromptForge-Optimizer
+promptforge download --quality-repo ArjunShukla/PromptForge-Quality \
+  --optimizer-repo ArjunShukla/PromptForge-Optimizer
 
 # Or point at Colab exports:
 promptforge init \

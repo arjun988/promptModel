@@ -14,42 +14,33 @@ if str(SRC) not in sys.path:
 
 
 README_CARD = """---
-language: en
+language:
+  - en
 license: mit
 library_name: transformers
+base_model: answerdotai/ModernBERT-base
 tags:
+  - promptforge
   - prompt-engineering
   - prompt-quality
   - modernbert
   - regression
-  - promptforge
+  - text-classification
+  - llm
 pipeline_tag: text-classification
 ---
 
 # PromptForge-Quality
 
-Scores LLM prompts across multiple quality dimensions:
+Multi-dimension prompt quality scorer (ModernBERT). See the full model card in this repo's `README.md` after upload, or the checkpoint folder `outputs/promptforge-quality-model/README.md`.
 
-- clarity
-- specificity
-- context
-- goal_definition
-- constraints
-- completeness
-- actionability
-
-## Usage
+Scores: clarity, specificity, context, goal_definition, constraints, completeness, actionability.
 
 ```python
 from promptforge import PromptForge
-
-pf = PromptForge(quality_model_path="YOUR_HF_REPO_OR_LOCAL_DIR")
+pf = PromptForge(quality_model_path="ArjunShukla/PromptForge-Quality")
 print(pf.analyze("Build me a website"))
 ```
-
-## Training
-
-Phase 1 of [PromptForge](https://github.com/promptforge/promptforge) — ModernBERT encoder with dual regression heads.
 """
 
 

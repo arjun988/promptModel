@@ -53,8 +53,8 @@ demo = [
 promptforge = "promptforge.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/promptforge/promptforge"
-Issues = "https://github.com/promptforge/promptforge/issues"
+Homepage = "https://github.com/arjun988/promptModel"
+Issues = "https://github.com/arjun988/promptModel/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

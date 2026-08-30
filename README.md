@@ -82,7 +82,16 @@ Include short examples.
 | **Scorer** | [`ModernBERT-base`](https://huggingface.co/answerdotai/ModernBERT-base) | ~150M | Full fine-tune |
 | **Optimizer** | [`Qwen2.5-1.5B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct) | 1.5B | LoRA (base frozen) |
 
-Weights are **not** stored in git. Train locally or publish to Hugging Face and `promptforge download`.
+Weights are **not** stored in git. Train locally or download from Hugging Face:
+
+```bash
+python -m promptforge download \
+  --quality-repo ArjunShukla/PromptForge-Quality \
+  --optimizer-repo ArjunShukla/PromptForge-Optimizer
+```
+
+- Quality: https://huggingface.co/ArjunShukla/PromptForge-Quality  
+- Optimizer: https://huggingface.co/ArjunShukla/PromptForge-Optimizer
 
 ---
 
@@ -118,7 +127,7 @@ Config: `configs/optimizer_fast_8gb.yaml` (seq 512, grad checkpointing, batch 1 
 ### Install
 
 ```bash
-git clone https://github.com/YOUR_USER/promptModel.git
+git clone https://github.com/arjun988/promptModel.git
 cd promptModel
 
 python -m venv .venv
@@ -188,8 +197,8 @@ Publish checkpoints:
 
 ```bash
 huggingface-cli login
-python scripts/export_to_hub.py --repo-id YOUR_USER/PromptForge-Quality
-python scripts/export_to_hub.py --repo-id YOUR_USER/PromptForge-Optimizer --optimizer
+python scripts/export_to_hub.py --repo-id ArjunShukla/PromptForge-Quality
+python scripts/export_to_hub.py --repo-id ArjunShukla/PromptForge-Optimizer --optimizer
 ```
 
 ---
