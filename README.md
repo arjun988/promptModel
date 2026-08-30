@@ -2,6 +2,8 @@
 
 **Local-first prompt quality scoring and optimization.**
 
+Published on PyPI as **[`tuneprompt`](https://pypi.org/project/tuneprompt/)**.
+
 PromptForge scores LLM prompts across seven quality dimensions, then rewrites weak prompts into clear, intent-preserving instructions — runnable on your machine via Python API, CLI, or Gradio.
 
 ```text
@@ -24,7 +26,7 @@ PromptForge scores LLM prompts across seven quality dimensions, then rewrites we
               41.5 → 94.0
 ```
 
-[Docs](docs/LOCAL.md) · [Product plan](docs/PRD.md) · [Contributing](CONTRIBUTING.md) · [License](LICENSE)
+[PyPI](https://pypi.org/project/tuneprompt/) · [Docs](docs/LOCAL.md) · [Product plan](docs/PRD.md) · [Contributing](CONTRIBUTING.md) · [License](LICENSE)
 
 ---
 
@@ -85,6 +87,8 @@ Include short examples.
 Weights are **not** stored in git. Train locally or download from Hugging Face:
 
 ```bash
+pip install tuneprompt
+
 python -m promptforge download \
   --quality-repo ArjunShukla/PromptForge-Quality \
   --optimizer-repo ArjunShukla/PromptForge-Optimizer
@@ -97,43 +101,67 @@ python -m promptforge download \
 
 ## Results
 
-Benchmarks from local training on **RTX 5060 Laptop (8 GB)** · Windows · `torch+cu128`.
-
-### Quality scorer
+Quality scorer (held-out):
 
 | Split | MAE | Pearson |
 |-------|----:|--------:|
 | Validation | **2.73** | **0.993** |
 | Test (overall) | **0.96** | **0.999** |
 
-25k synthetic examples · 3 epochs · ~33 min
-
-### Prompt optimizer
-
-| Metric | Value |
-|--------|------:|
-| Validation loss | **0.121** |
-| Train loss | 0.466 |
-| Data | **800** curated weak→strong pairs |
-| Epochs | 6 |
-| Wall time | ~87 min |
-
-Config: `configs/optimizer_fast_8gb.yaml` (seq 512, grad checkpointing, batch 1 × accum 8)
-
 ---
 
 ## Quickstart
 
-### Install from PyPI
+### Install
 
 ```bash
 pip install tuneprompt
 ```
 
-> **Note:** The PyPI package is **`tuneprompt`** (`promptforge` is already taken).  
-> Import and CLI stay the same: `from promptforge import PromptForge` · `promptforge` / `tuneprompt`.
+Package: [`tuneprompt` on PyPI](https://pypi.org/project/tuneprompt/1.0.0/)  
+Import module: `promptforge` · CLI: `tuneprompt` or `promptforge`
 
-### Install from source
+### Download models & run
+
+```bash
+python -m promptforge download \
+  --quality-repo ArjunShukla/PromptForge-Quality \
+  --optimizer-repo ArjunShukla/PromptForge-Optimizer
+
+python -m promptforge init
+python -m promptforge doctor
+python -m promptforge run "Build me a website for a startup"
+python -m promptforge analyze "Make an app." --json
+```
+
+Same via CLI entrypoints:
+
+```bash
+tuneprompt run "Build me a website for a startup"
+# or
+promptforge run "Build me a website for a startup"
+```
+
+> On some Windows setups, Application Control blocks `.venv\Scripts\*.exe`. Prefer `python -m promptforge …`.
+
+### Python API
+
+```python
+from promptforge import PromptForge
+
+# After download + init, or pass Hub / local paths:
+pf = PromptForge(
+    quality_model_path="ArjunShukla/PromptForge-Quality",
+    optimizer_model_path="ArjunShukla/PromptForge-Optimizer",
+)
+
+print(pf.analyze("Make an app."))
+result = pf.run("Make an app about social media like facebook and stuff")
+print(result["optimized_prompt"])
+print(result["delta"]["quality_score"])
+```
+
+### Install from source (optional)
 
 ```bash
 git clone https://github.com/arjun988/promptModel.git
@@ -156,37 +184,11 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 Full local guide: [docs/LOCAL.md](docs/LOCAL.md)
 
-### Configure & run
-
-```bash
-# Point at your trained checkpoints
-python -m promptforge init \
-  --quality-model outputs/promptforge-quality-model \
-  --optimizer-model outputs/promptforge-optimizer-model
-
-python -m promptforge doctor
-python -m promptforge run "Build me a website for a startup"
-python -m promptforge analyze "Make an app." --json
-```
-
-> On some Windows setups, Application Control blocks `.venv\Scripts\promptforge.exe`. Prefer `python -m promptforge …`.
-
-### Python API
-
-```python
-from promptforge import PromptForge
-
-pf = PromptForge.from_config()
-
-print(pf.analyze("Make an app."))
-result = pf.run("Make an app about social media like facebook and stuff")
-print(result["optimized_prompt"])
-print(result["delta"]["quality_score"])
-```
-
 ---
 
 ## Train your own
+
+Anyone can improve the models with their own data:
 
 ```bash
 # Phase 1 — quality scorer
@@ -205,9 +207,9 @@ python scripts/train_optimizer.py --require-gpu --fast --regenerate
 Publish checkpoints:
 
 ```bash
-huggingface-cli login
-python scripts/export_to_hub.py --repo-id ArjunShukla/PromptForge-Quality
-python scripts/export_to_hub.py --repo-id ArjunShukla/PromptForge-Optimizer --optimizer
+hf auth login
+hf upload ArjunShukla/PromptForge-Quality outputs/promptforge-quality-model --repo-type model
+hf upload ArjunShukla/PromptForge-Optimizer outputs/promptforge-optimizer-model --repo-type model
 ```
 
 ---
@@ -255,7 +257,7 @@ Notebooks: [notebooks/README.md](notebooks/README.md)
 | 1 | Multi-dimension quality scorer | Done |
 | 2 | Intent-preserving prompt optimizer (LoRA) | Done |
 | 3 | Combined pipeline + eval + Gradio | Done |
-| 4 | Local package + CLI | Done |
+| 4 | Local package + CLI (`tuneprompt`) | Done |
 | 5 | VS Code / Cursor extension | Planned |
 
 ---

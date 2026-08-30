@@ -4,11 +4,19 @@
 
 ```bash
 pip install tuneprompt
-# optional extras after publishing wheels with extras, or install from source for demo/dev
 ```
 
-Package name on PyPI is **`tuneprompt`** (the name `promptforge` is already taken).  
-Python import stays `promptforge`; CLI: `promptforge` or `tuneprompt`.
+- **PyPI:** https://pypi.org/project/tuneprompt/1.0.0/  
+- **Import:** `from promptforge import PromptForge`  
+- **CLI:** `tuneprompt` or `promptforge` (also `python -m promptforge`)
+
+Then download models:
+
+```bash
+python -m promptforge download \
+  --quality-repo ArjunShukla/PromptForge-Quality \
+  --optimizer-repo ArjunShukla/PromptForge-Optimizer
+```
 
 ## Install from source
 
