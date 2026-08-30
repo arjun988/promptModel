@@ -5,7 +5,7 @@ from promptforge.optimizer import PromptOptimizer
 from promptforge.pipeline import PromptForge
 from promptforge.scorer import PromptQualityScorer
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __all__ = [
     "PromptAnalyzer",
     "PromptForge",

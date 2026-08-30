@@ -204,14 +204,6 @@ python scripts/train_optimizer.py --require-gpu --fast --regenerate
 | `--regenerate` | Rebuild curated optimizer dataset |
 | `load_in_4bit: true` | Use if 1.5B LoRA OOMs |
 
-Publish checkpoints:
-
-```bash
-hf auth login
-hf upload ArjunShukla/PromptForge-Quality outputs/promptforge-quality-model --repo-type model
-hf upload ArjunShukla/PromptForge-Optimizer outputs/promptforge-optimizer-model --repo-type model
-```
-
 ---
 
 ## CLI

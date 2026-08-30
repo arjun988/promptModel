@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuneprompt"
-version = "1.0.1"
+version = "1.0.2"
 description = "Open-source prompt quality scoring and optimization for LLMs"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -17,6 +17,9 @@ keywords = [
   "huggingface",
   "prompt-quality",
   "promptforge",
+  "ai",
+  "agent",
+  "finetune",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
