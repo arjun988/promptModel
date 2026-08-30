@@ -6,7 +6,7 @@
 pip install tuneprompt
 ```
 
-- **PyPI:** https://pypi.org/project/tuneprompt/1.0.0/  
+- **PyPI:** https://pypi.org/project/tuneprompt/  
 - **Import:** `from promptforge import PromptForge`  
 - **CLI:** `tuneprompt` or `promptforge` (also `python -m promptforge`)
 

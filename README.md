@@ -118,7 +118,7 @@ Quality scorer (held-out):
 pip install tuneprompt
 ```
 
-Package: [`tuneprompt` on PyPI](https://pypi.org/project/tuneprompt/1.0.0/)  
+Package: [`tuneprompt` on PyPI](https://pypi.org/project/tuneprompt/)  
 Import module: `promptforge` · CLI: `tuneprompt` or `promptforge`
 
 ### Download models & run
