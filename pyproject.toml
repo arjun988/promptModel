@@ -3,8 +3,8 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "promptforge"
-version = "0.4.0"
+name = "tuneprompt"
+version = "1.0.0"
 description = "Open-source prompt quality scoring and optimization for LLMs"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -16,9 +16,10 @@ keywords = [
   "modernbert",
   "huggingface",
   "prompt-quality",
+  "promptforge",
 ]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
@@ -50,11 +51,15 @@ demo = [
 ]
 
 [project.scripts]
+tuneprompt = "promptforge.cli:main"
 promptforge = "promptforge.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/arjun988/promptModel"
 Issues = "https://github.com/arjun988/promptModel/issues"
+Documentation = "https://github.com/arjun988/promptModel#readme"
+"Hugging Face (Quality)" = "https://huggingface.co/ArjunShukla/PromptForge-Quality"
+"Hugging Face (Optimizer)" = "https://huggingface.co/ArjunShukla/PromptForge-Optimizer"
 
 [tool.setuptools.packages.find]
 where = ["src"]

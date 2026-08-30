@@ -58,7 +58,7 @@ def main() -> int:
             "pyyaml",
             "huggingface_hub",
             # Install your published package, or copy src/ into the Space.
-            # "promptforge @ git+https://github.com/arjun988/promptModel.git",
+            # "tuneprompt @ git+https://github.com/arjun988/promptModel.git",
         ]
     )
     (out / "requirements.txt").write_text(req + "\n", encoding="utf-8")

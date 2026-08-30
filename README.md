@@ -124,7 +124,16 @@ Config: `configs/optimizer_fast_8gb.yaml` (seq 512, grad checkpointing, batch 1 
 
 ## Quickstart
 
-### Install
+### Install from PyPI
+
+```bash
+pip install tuneprompt
+```
+
+> **Note:** The PyPI package is **`tuneprompt`** (`promptforge` is already taken).  
+> Import and CLI stay the same: `from promptforge import PromptForge` · `promptforge` / `tuneprompt`.
+
+### Install from source
 
 ```bash
 git clone https://github.com/arjun988/promptModel.git

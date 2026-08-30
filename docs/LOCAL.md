@@ -1,6 +1,16 @@
 # Local install guide (Phase 4)
 
-## Install
+## Install from PyPI
+
+```bash
+pip install tuneprompt
+# optional extras after publishing wheels with extras, or install from source for demo/dev
+```
+
+Package name on PyPI is **`tuneprompt`** (the name `promptforge` is already taken).  
+Python import stays `promptforge`; CLI: `promptforge` or `tuneprompt`.
+
+## Install from source
 
 ```bash
 # from repo root

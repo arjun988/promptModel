@@ -10,7 +10,9 @@ python -m venv .venv
 # macOS/Linux: source .venv/bin/activate
 
 pip install -e ".[demo,dev]"
+# PyPI name will be: pip install tuneprompt
 promptforge doctor
+# or: tuneprompt doctor
 pytest -q
 ```
 
