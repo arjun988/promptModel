@@ -1,16 +1,16 @@
 # PromptForge-Optimizer (Phase 2) — LoRA SFT defaults
-# GPU-first. Tuned for Colab T4 / local CUDA.
+# Default base: Qwen2.5-1.5B-Instruct. For 8GB laptops use --fast.
 
-base_model_name: Qwen/Qwen2.5-0.5B-Instruct
-max_seq_length: 1024
+base_model_name: Qwen/Qwen2.5-1.5B-Instruct
+max_seq_length: 512
 max_new_tokens: 256
 
-# Data
-num_examples: 5000
+# Data — curated high-quality weak→strong pairs
+num_examples: 800
 seed: 42
-train_ratio: 0.90
-val_ratio: 0.05
-test_ratio: 0.05
+train_ratio: 0.80
+val_ratio: 0.10
+test_ratio: 0.10
 task_type: general  # general | coding | writing | research | data | creative
 
 # LoRA / PEFT
@@ -27,18 +27,18 @@ lora_target_modules:
   - down_proj
 
 # Training
-num_train_epochs: 3
-per_device_train_batch_size: 2
-per_device_eval_batch_size: 2
+num_train_epochs: 6
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
 gradient_accumulation_steps: 8
-learning_rate: 2.0e-4
+learning_rate: 1.0e-4
 weight_decay: 0.01
-warmup_ratio: 0.03
-logging_steps: 50
-eval_steps: 200
-save_steps: 200
+warmup_ratio: 0.05
+logging_steps: 10
+eval_steps: 40
+save_steps: 40
 save_total_limit: 2
-early_stopping_patience: 3
+early_stopping_patience: 4
 
 gradient_checkpointing: true
 dataloader_num_workers: 0

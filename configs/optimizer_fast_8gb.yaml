@@ -1,15 +1,15 @@
-# PromptForge-Optimizer — fast profile for 8GB GPUs (e.g. RTX 5060 Laptop)
-# ~2-3x faster than configs/optimizer.yaml with similar effective batch size.
+# PromptForge-Optimizer — 8GB GPU profile (RTX 5060 Laptop)
+# Base: Qwen2.5-1.5B-Instruct + LoRA (fits 8GB with checkpointing + small batch)
 
-base_model_name: Qwen/Qwen2.5-0.5B-Instruct
-max_seq_length: 512          # was 1024 — biggest speed win
+base_model_name: Qwen/Qwen2.5-1.5B-Instruct
+max_seq_length: 512
 max_new_tokens: 256
 
-num_examples: 5000
+num_examples: 800                 # curated high-quality weak→strong pairs
 seed: 42
-train_ratio: 0.90
-val_ratio: 0.05
-test_ratio: 0.05
+train_ratio: 0.80
+val_ratio: 0.10
+test_ratio: 0.10
 task_type: general
 
 lora_r: 16
@@ -24,26 +24,26 @@ lora_target_modules:
   - up_proj
   - down_proj
 
-num_train_epochs: 3
-per_device_train_batch_size: 4    # was 2
-per_device_eval_batch_size: 4
-gradient_accumulation_steps: 4    # effective batch = 16 (same as 2×8)
-learning_rate: 2.0e-4
+num_train_epochs: 6
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 8    # effective batch = 8
+learning_rate: 1.0e-4
 weight_decay: 0.01
-warmup_ratio: 0.03
-logging_steps: 50
-eval_steps: 400                   # less eval overhead
-save_steps: 400
+warmup_ratio: 0.05
+logging_steps: 10
+eval_steps: 40
+save_steps: 40
 save_total_limit: 2
-early_stopping_patience: 3
+early_stopping_patience: 4
 
-gradient_checkpointing: false     # 0.5B fits at 512 on 8GB — ~25% faster
-dataloader_num_workers: 2
+gradient_checkpointing: true      # needed for 1.5B on 8GB
+dataloader_num_workers: 0
 
 prefer_gpu: true
 use_fp16: true
 use_bf16: false
-load_in_4bit: false
+load_in_4bit: false               # set true if you hit OOM
 
 output_dir: outputs/promptforge-optimizer
 dataset_path: data/promptforge_optimizer_dataset.csv

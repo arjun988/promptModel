@@ -1,229 +1,196 @@
 # PromptForge
 
-**Open-source AI for prompt quality scoring and optimization.**
+**Local-first prompt quality scoring and optimization.**
 
-PromptForge evaluates prompts across multiple quality dimensions, then rewrites them into clearer, more actionable prompts — with a local Python package, CLI, and Gradio demo.
+PromptForge scores LLM prompts across seven quality dimensions, then rewrites weak prompts into clear, intent-preserving instructions — runnable on your machine via Python API, CLI, or Gradio.
 
 ```text
-"Make me a website"
-        │
-        ▼
-┌───────────────────┐
-│ Quality Scorer    │  → score, dimensions, issues, missing info
-└─────────┬─────────┘
-          ▼
-┌───────────────────┐
-│ Prompt Optimizer  │  → optimized prompt (LoRA)
-└─────────┬─────────┘
-          ▼
-   before / after comparison
+"Make an app about social media like facebook"
+                    │
+                    ▼
+         ┌─────────────────────┐
+         │  Quality Scorer     │  ModernBERT · ~150M
+         │  41.5 → issues…     │
+         └──────────┬──────────┘
+                    ▼
+         ┌─────────────────────┐
+         │  Prompt Optimizer   │  Qwen2.5-1.5B + LoRA
+         └──────────┬──────────┘
+                    ▼
+   Build a social media app similar to Facebook…
+   profiles · feed · likes · constraints · output format
+                    │
+                    ▼
+              41.5 → 94.0
 ```
+
+[Docs](docs/LOCAL.md) · [Product plan](docs/PRD.md) · [Contributing](CONTRIBUTING.md) · [License](LICENSE)
 
 ---
 
-## Status
+## Why PromptForge
 
-| Phase | Deliverable | Status |
-|------:|-------------|--------|
-| **1** | Quality scorer (ModernBERT) | Done |
-| **2** | Prompt optimizer (LoRA) | Done |
-| **3** | Combined pipeline + eval + Gradio Space | Done |
-| **4** | Local Python package + CLI | Done |
-| **5** | VS Code / Cursor integration | Planned |
+Most prompt tools either **judge** quality or **rewrite** text. PromptForge does both in one local pipeline:
 
-Full product plan: [docs/PRD.md](docs/PRD.md)
+| Capability | What you get |
+|------------|--------------|
+| **Multi-dimension scoring** | Clarity, specificity, context, goals, constraints, completeness, actionability |
+| **Intent-preserving rewrite** | Optimizes the *same* topic — not a generic template |
+| **Validation & fallback** | Rejects repetitive / off-topic generations |
+| **Runs locally** | ~1.65B total params; trains on 8 GB GPUs |
+| **Dev-ready surface** | `pip` package, CLI, Gradio demo, Colab notebooks |
+
+No API key required for inference once models are on disk.
+
+---
+
+## Example
+
+**Input**
+
+```text
+Make an app about social media like facebook and stuff
+```
+
+**Output (optimizer)**
+
+```text
+Build a social media app similar to Facebook for product managers.
+This is for a portfolio demo.
+
+Core features:
+- User profiles and friend connections
+- News feed with posts, likes, and comments
+- Basic notifications
+
+Requirements:
+- Use Python and Flask.
+- Keep the first version simple and usable
+- Include error handling and clear project structure
+
+Include short examples.
+```
+
+**Quality:** `41.5 → 94.0` (Δ +52.5) · topic preserved · no fallback
 
 ---
 
 ## Models
 
-| Component | Base model | Parameters | What you train |
-|-----------|------------|------------|----------------|
-| **Quality scorer** | [`answerdotai/ModernBERT-base`](https://huggingface.co/answerdotai/ModernBERT-base) | **~150M** | Full fine-tune (encoder + regression heads) |
-| **Prompt optimizer** | [`Qwen/Qwen2.5-0.5B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct) | **0.5B** (~494M) | LoRA adapter only (~8M trainable; base frozen) |
+| Component | Base | Size | Training |
+|-----------|------|------|----------|
+| **Scorer** | [`ModernBERT-base`](https://huggingface.co/answerdotai/ModernBERT-base) | ~150M | Full fine-tune |
+| **Optimizer** | [`Qwen2.5-1.5B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct) | 1.5B | LoRA (base frozen) |
 
-**Total footprint at inference:** ~150M (scorer) + ~500M (optimizer base + small LoRA) ≈ **~650M parameters** — small enough to run locally on an 8 GB GPU.
+Weights are **not** stored in git. Train locally or publish to Hugging Face and `promptforge download`.
 
 ---
 
-## Results (local — RTX 5060 Laptop, 8 GB)
+## Results
 
-Trained on **Windows + CUDA** (`torch+cu128`). Metrics from `outputs/*/metrics.json`.
+Benchmarks from local training on **RTX 5060 Laptop (8 GB)** · Windows · `torch+cu128`.
 
-### Phase 1 — PromptForge-Quality
+### Quality scorer
 
-**Model:** `answerdotai/ModernBERT-base` (**~150M**) · **Data:** 25k synthetic · **Epochs:** 3
+| Split | MAE | Pearson |
+|-------|----:|--------:|
+| Validation | **2.73** | **0.993** |
+| Test (overall) | **0.96** | **0.999** |
 
-| Split | Metric | Value |
-|-------|--------|------:|
-| Validation | MAE | **2.73** |
-| Validation | RMSE | 3.15 |
-| Validation | Pearson | **0.993** |
-| Test (overall) | MAE | **0.96** |
-| Test (overall) | Pearson | **0.999** |
-| Test (overall) | Spearman | 0.959 |
+25k synthetic examples · 3 epochs · ~33 min
 
-Training: ~**33 min** (`train_loss` 55.07) · Device: RTX 5060 Laptop GPU
+### Prompt optimizer
 
-### Phase 2 — PromptForge-Optimizer
+| Metric | Value |
+|--------|------:|
+| Validation loss | **0.121** |
+| Train loss | 0.466 |
+| Data | **800** curated weak→strong pairs |
+| Epochs | 6 |
+| Wall time | ~87 min |
 
-**Model:** `Qwen/Qwen2.5-0.5B-Instruct` (**0.5B**) + LoRA · **Data:** 10k · **Epochs:** 2 · **Seq len:** 512
-
-| Split | Metric | Value |
-|-------|--------|------:|
-| Validation | eval_loss | **0.135** |
-| Train | train_loss | 0.191 |
-
-Training: ~**43 min** · Config: `configs/optimizer_fast_8gb.yaml` (`batch=4`, `grad_accum=4`, no gradient checkpointing)
-
-### Phase 3 — Pipeline eval
-
-Run after both models are trained:
-
-```bash
-python scripts/evaluate_pipeline.py
-```
-
-Reports score lift, preservation metrics, and downstream proxy to `outputs/phase3_eval/pipeline_report.json`.
+Config: `configs/optimizer_fast_8gb.yaml` (seq 512, grad checkpointing, batch 1 × accum 8)
 
 ---
 
 ## Quickstart
+
+### Install
 
 ```bash
 git clone https://github.com/YOUR_USER/promptModel.git
 cd promptModel
 
 python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux: source .venv/bin/activate
+# Windows:  .venv\Scripts\activate
+# Unix:     source .venv/bin/activate
 
+pip install -U pip
 pip install -e ".[demo,dev]"
-promptforge init
-promptforge doctor
 ```
 
-Point config at trained models (Colab exports or Hub):
+**GPU tip:** default `pip install torch` is often CPU-only. For NVIDIA (incl. RTX 50-series):
 
 ```bash
-promptforge init \
+pip uninstall -y torch torchvision torchaudio
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+```
+
+Full local guide: [docs/LOCAL.md](docs/LOCAL.md)
+
+### Configure & run
+
+```bash
+# Point at your trained checkpoints
+python -m promptforge init \
   --quality-model outputs/promptforge-quality-model \
   --optimizer-model outputs/promptforge-optimizer-model
 
-promptforge analyze "Build me a website"
-promptforge optimize "Build me a website"
-promptforge run "Build me a website"
+python -m promptforge doctor
+python -m promptforge run "Build me a website for a startup"
+python -m promptforge analyze "Make an app." --json
 ```
 
-Python API:
+> On some Windows setups, Application Control blocks `.venv\Scripts\promptforge.exe`. Prefer `python -m promptforge …`.
+
+### Python API
 
 ```python
 from promptforge import PromptForge
 
 pf = PromptForge.from_config()
+
 print(pf.analyze("Make an app."))
-print(pf.run("Build me a website for a startup."))
+result = pf.run("Make an app about social media like facebook and stuff")
+print(result["optimized_prompt"])
+print(result["delta"]["quality_score"])
 ```
-
-Local setup guide: [docs/LOCAL.md](docs/LOCAL.md)
 
 ---
 
-## Phases
-
-### Phase 1 — Quality Scorer
-
-ModernBERT encoder (**~150M**) with multi-dimension regression heads.
-
-Scores: `clarity`, `specificity`, `context`, `goal_definition`, `constraints`, `completeness`, `actionability`.
-
-| Colab (self-contained) | Package-driven |
-|------------------------|----------------|
-| [notebooks/colab/01_quality_scorer.ipynb](notebooks/colab/01_quality_scorer.ipynb) | [notebooks/package/01_quality_scorer.ipynb](notebooks/package/01_quality_scorer.ipynb) |
+## Train your own
 
 ```bash
+# Phase 1 — quality scorer
 python scripts/train_quality.py --require-gpu --regenerate
+
+# Phase 2 — optimizer (recommended on 8GB GPUs)
+python scripts/train_optimizer.py --require-gpu --fast --regenerate
 ```
 
-**Held-out (local):** val Pearson **0.993**, test overall Pearson **0.999**, test MAE **0.96**.
+| Flag / config | Purpose |
+|---------------|---------|
+| `--fast` | Loads `configs/optimizer_fast_8gb.yaml` |
+| `--regenerate` | Rebuild curated optimizer dataset |
+| `load_in_4bit: true` | Use if 1.5B LoRA OOMs |
 
-### Phase 2 — Prompt Optimizer
-
-LoRA fine-tune on `Qwen/Qwen2.5-0.5B-Instruct` (**0.5B** base, ~8M trainable LoRA weights).
-
-| Colab (self-contained) | Package-driven |
-|------------------------|----------------|
-| [notebooks/colab/02_prompt_optimizer.ipynb](notebooks/colab/02_prompt_optimizer.ipynb) | [notebooks/package/02_prompt_optimizer.ipynb](notebooks/package/02_prompt_optimizer.ipynb) |
+Publish checkpoints:
 
 ```bash
-# 8GB GPU fast profile (recommended locally)
-python scripts/train_optimizer.py --require-gpu --fast
-
-# Default / Colab-style config
-python scripts/train_optimizer.py --require-gpu --regenerate
+huggingface-cli login
+python scripts/export_to_hub.py --repo-id YOUR_USER/PromptForge-Quality
+python scripts/export_to_hub.py --repo-id YOUR_USER/PromptForge-Optimizer --optimizer
 ```
-
-**Held-out (local):** val `eval_loss` **0.135** · ~43 min on RTX 5060 8GB with `--fast`.
-
-### Phase 3 — Combined Pipeline
-
-Score → optimize → re-score → before/after report + Gradio Space.
-
-| Colab | Package-driven |
-|-------|----------------|
-| [notebooks/colab/03_combined_pipeline.ipynb](notebooks/colab/03_combined_pipeline.ipynb) | [notebooks/package/03_combined_pipeline.ipynb](notebooks/package/03_combined_pipeline.ipynb) |
-
-```bash
-promptforge run "Build me a website" --json
-python scripts/evaluate_pipeline.py
-python demo/app.py
-```
-
-### Phase 4 — Local Package + CLI
-
-Installable product with `~/.promptforge` config, `doctor`, and `download`.
-
-| Notebook |
-|----------|
-| [notebooks/colab/04_local_package.ipynb](notebooks/colab/04_local_package.ipynb) |
-
-```bash
-promptforge init
-promptforge doctor
-promptforge download --quality-repo YOUR_USER/PromptForge-Quality \
-  --optimizer-repo YOUR_USER/PromptForge-Optimizer
-```
-
-### Phase 5 — Editor Integrations (later)
-
-VS Code / Cursor extension and related developer-tool surfaces. Not started yet.
-
----
-
-## Repository layout
-
-```text
-promptModel/
-├── src/promptforge/          # Python package (API + CLI)
-├── configs/                  # Training + local defaults
-├── scripts/                  # Train / eval / export helpers
-├── examples/                 # Minimal usage scripts
-├── demo/                     # Gradio app (HF Space)
-├── notebooks/
-│   ├── colab/                # Self-contained Colab experiments
-│   └── package/              # Thin notebooks that call the package
-├── docs/
-│   ├── PRD.md                # Product requirements
-│   └── LOCAL.md              # Local install guide
-├── models/                   # Placeholder for downloaded weights
-├── data/                     # Generated datasets (gitignored)
-├── outputs/                  # Checkpoints / reports (gitignored)
-├── tests/
-├── pyproject.toml
-└── README.md
-```
-
-Notebook guide: [notebooks/README.md](notebooks/README.md)
 
 ---
 
@@ -231,42 +198,61 @@ Notebook guide: [notebooks/README.md](notebooks/README.md)
 
 | Command | Description |
 |---------|-------------|
-| `promptforge init` | Create `~/.promptforge` |
-| `promptforge doctor` | Check GPU, config, models |
-| `promptforge download` | Fetch models from Hugging Face |
-| `promptforge analyze` | Score a prompt |
-| `promptforge optimize` | Rewrite a prompt |
-| `promptforge run` | Full analyze → optimize → compare |
-| `promptforge eval` | Evaluation reports |
-| `promptforge space` | Launch Gradio demo |
-| `promptforge train-quality` | Train Phase 1 |
-| `promptforge train-optimizer` | Train Phase 2 |
+| `init` | Create `~/.promptforge` and register model paths |
+| `doctor` | GPU / config / model health check |
+| `download` | Pull models from Hugging Face |
+| `analyze` | Score a prompt |
+| `optimize` | Rewrite a prompt |
+| `run` | Score → optimize → compare |
+| `eval` | Pipeline evaluation reports |
+| `space` | Launch Gradio demo |
+| `train-quality` / `train-optimizer` | Training entrypoints |
 
 ---
 
-## Training notes
+## Project layout
 
-- **Train in Colab (GPU)** — use notebooks under `notebooks/colab/`
-- **Develop the package locally** — `src/promptforge/`, CLI, tests
-- Prefer CUDA + fp16; set `PROMPTFORGE_REQUIRE_GPU=1` to fail without a GPU
-- **8GB GPUs:** use `python scripts/train_optimizer.py --fast` (see `configs/optimizer_fast_8gb.yaml`)
-- **CUDA torch:** install `cu128` wheels — see [docs/LOCAL.md](docs/LOCAL.md)
-
-Hugging Face upload:
-
-```bash
-huggingface-cli login
-python scripts/export_to_hub.py --repo-id YOUR_USER/PromptForge-Quality
+```text
+promptModel/
+├── src/promptforge/     # Package: scorer, optimizer, pipeline, CLI
+├── configs/             # Training + local defaults
+├── scripts/             # Train / eval / Hub export
+├── demo/                # Gradio app
+├── notebooks/
+│   ├── colab/           # Self-contained experiments
+│   └── package/         # Thin package drivers
+├── docs/                # PRD + local setup
+├── tests/
+└── pyproject.toml
 ```
+
+Notebooks: [notebooks/README.md](notebooks/README.md)
+
+---
+
+## Roadmap
+
+| Phase | Deliverable | Status |
+|------:|-------------|--------|
+| 1 | Multi-dimension quality scorer | Done |
+| 2 | Intent-preserving prompt optimizer (LoRA) | Done |
+| 3 | Combined pipeline + eval + Gradio | Done |
+| 4 | Local package + CLI | Done |
+| 5 | VS Code / Cursor extension | Planned |
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+Issues and PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, style, and PR expectations.
+
+```bash
+pip install -e ".[dev]"
+pytest -q
+```
 
 ---
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) © PromptForge contributors

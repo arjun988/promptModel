@@ -93,15 +93,15 @@ class QualityScorerConfig:
 class OptimizerConfig:
     """Configuration for PromptForge Phase-2 prompt optimizer (LoRA SFT)."""
 
-    base_model_name: str = "Qwen/Qwen2.5-0.5B-Instruct"
-    max_seq_length: int = 1024
+    base_model_name: str = "Qwen/Qwen2.5-1.5B-Instruct"
+    max_seq_length: int = 512
     max_new_tokens: int = 256
 
-    num_examples: int = 5_000
+    num_examples: int = 800
     seed: int = 42
-    train_ratio: float = 0.90
-    val_ratio: float = 0.05
-    test_ratio: float = 0.05
+    train_ratio: float = 0.80
+    val_ratio: float = 0.10
+    test_ratio: float = 0.10
     task_type: str = "general"
 
     lora_r: int = 16
@@ -119,18 +119,18 @@ class OptimizerConfig:
         ]
     )
 
-    num_train_epochs: int = 3
-    per_device_train_batch_size: int = 2
-    per_device_eval_batch_size: int = 2
+    num_train_epochs: int = 6
+    per_device_train_batch_size: int = 1
+    per_device_eval_batch_size: int = 1
     gradient_accumulation_steps: int = 8
-    learning_rate: float = 2e-4
+    learning_rate: float = 1.0e-4
     weight_decay: float = 0.01
-    warmup_ratio: float = 0.03
-    logging_steps: int = 50
-    eval_steps: int = 200
-    save_steps: int = 200
+    warmup_ratio: float = 0.05
+    logging_steps: int = 10
+    eval_steps: int = 40
+    save_steps: int = 40
     save_total_limit: int = 2
-    early_stopping_patience: int = 3
+    early_stopping_patience: int = 4
 
     gradient_checkpointing: bool = True
     dataloader_num_workers: int = 0

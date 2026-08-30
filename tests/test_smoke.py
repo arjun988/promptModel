@@ -58,14 +58,27 @@ def test_ensure_dirs(tmp_path, monkeypatch):
     assert paths["models"].exists()
 
 def test_generate_optimizer_example_schema():
-    from promptforge.data.optimizer_generate import generate_optimizer_example
+    from promptforge.data.optimizer_generate import (
+        CURATED_PAIRS,
+        generate_optimizer_dataset,
+        generate_optimizer_example,
+    )
 
+    assert len(CURATED_PAIRS) >= 100
     ex = generate_optimizer_example()
     assert "prompt" in ex
     assert "optimized_prompt" in ex
     assert "messages_json" in ex
     assert "canonical_task" in ex
     assert ex["task_type"] in {"coding", "writing", "research", "data", "general", "creative"}
+    # Topic words from weak prompt should appear in strong prompt
+    weak_tokens = {t for t in ex["prompt"].lower().split() if len(t) > 3}
+    strong = ex["optimized_prompt"].lower()
+    assert any(t.rstrip(".,") in strong for t in weak_tokens)
+
+    df = generate_optimizer_dataset(num_examples=800, seed=0)
+    assert len(df) == 800
+    assert df["prompt"].nunique() >= 80
 
 
 def test_optimizer_validation_rejects_repetition():
@@ -86,7 +99,7 @@ def test_tokenize_sft_masks_prompt():
 
     ex = generate_optimizer_example()
     messages = __import__("json").loads(ex["messages_json"])
-    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct", trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-1.5B-Instruct", trust_remote_code=True)
     encoded = tokenize_sft_messages(tokenizer, messages, max_length=512)
     assert any(label == -100 for label in encoded["labels"])
     assert any(label != -100 for label in encoded["labels"])
